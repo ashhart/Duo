@@ -1,6 +1,6 @@
 {
   "name": "omp-local-duo",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Two models, one workspace: talk, agree on a plan, and build together in OMP.",
   "type": "module",
   "private": true,
@@ -23,7 +23,7 @@
     "extensions": [
       "./src/omp.ts"
     ],
-    "version": "0.5.3"
+    "version": "0.5.4"
   },
   "scripts": {
     "test": "bun test",

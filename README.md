@@ -6,11 +6,11 @@ An OMP plugin for models that talk through a task, agree on a split, and work to
 
 [![Checks](https://github.com/ashhart/Duo/actions/workflows/check.yml/badge.svg)](https://github.com/ashhart/Duo/actions/workflows/check.yml)
 ![OMP](https://img.shields.io/badge/OMP-tested%20on%2018.2.6-536dfe)
-![Version](https://img.shields.io/badge/version-0.5.3-00897b)
+![Version](https://img.shields.io/badge/version-0.5.4-00897b)
 
 </div>
 
-Keep your current model, choose a partner, and give them a goal.
+Choose two models and give them a goal.
 Duo connects them through OMP's **Agent Hub messages**, with a shared workspace,
 working notes, and a live board showing who is doing what.
 Each model runs its own conversation; Duo does not share KV caches or model weights.
@@ -23,39 +23,41 @@ With OMP installed and your models authenticated, install Duo in your terminal:
 omp plugin install github:ashhart/Duo
 ```
 
-Open a terminal in the project you want the models to work on, then launch OMP:
+From a terminal in your project, launch OMP straight into Duo:
 
 ```sh
-omp
+omp "/duo"
 ```
 
-Inside OMP, type:
+Duo shows two pickers: choose your first model, then choose its partner.
+Press Enter to confirm each choice, or Escape to cancel without changing your model.
+
+Already inside OMP? Type the slash command there:
 
 ```text
 /duo
 ```
 
-Choose a partner and press Enter. Your current OMP model is the first member;
-the model you pick is the second. Once the room opens, type a task normally:
+Both routes open the same two pickers. Once the room opens, type a task normally:
 
 > Add search to this app, agree on who owns the implementation and tests, and check each other's work.
 
-**Want to choose both models in one command?** First see your configured model IDs:
+You can also supply both model IDs from the terminal:
 
-```text
-/duo models
+```sh
+omp "/duo provider/model-a provider/model-b"
 ```
 
-Then use two IDs from that list:
+Or, when already inside OMP:
 
 ```text
 /duo provider/model-a provider/model-b
 ```
 
-Replace `provider/model-a` and `provider/model-b` with your actual model IDs.
-The first becomes your visible OMP model; the second joins as its partner.
-Use the same ID twice to run two sessions of one model.
-If you want to keep your current model, supply only the partner's ID:
+These are placeholders: use `/duo models` inside OMP to see your configured IDs.
+The first model becomes your visible session; the second joins as its partner.
+You can select the same model twice to open two sessions.
+If you have already chosen your first model in OMP, add only its partner:
 
 ```text
 /duo provider/model-b
@@ -94,9 +96,11 @@ a background task and communicates through Agent Hub.
 
 ## Commands
 
+Run these slash commands **inside OMP**; from your terminal, use `omp "/duo"`.
+
 | Command | What it does |
 | --- | --- |
-| `/duo` | Keep your current model, open the picker, and choose a partner. |
+| `/duo` | Open the first-model picker, then the partner picker. |
 | `/duo provider/model` | Keep your current model and start with this partner. |
 | `/duo provider/model-a provider/model-b` | Select both models: first is visible, second is the partner. |
 | `/duo models` | List configured model IDs to use in the commands above. |

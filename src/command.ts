@@ -16,7 +16,7 @@ import { installPeerModelOverride } from "./settings";
 import type { CommandContext, ModelRef, OmpExtensionApi, RoomState } from "./types";
 import { describeError } from "./util";
 
-async function choosePeer(spec: string, context: CommandContext, visible: ModelRef): Promise<ModelRef | undefined> {
+async function chooseModel(spec: string, context: CommandContext, visible: ModelRef | undefined, step: "first" | "second"): Promise<ModelRef | undefined> {
 	const direct = spec.trim();
 	if (direct) {
 		const resolved = context.models.resolve(direct);
@@ -29,11 +29,15 @@ async function choosePeer(spec: string, context: CommandContext, visible: ModelR
 		context.ui.notify("Duo found no authenticated models in the OMP catalog.", "warning");
 		return undefined;
 	}
+	if (context.hasUI === false) {
+		context.ui.notify("The Duo pickers need interactive OMP. Use omp \"/duo\" in your terminal, or supply both model IDs in headless mode.", "error");
+		return undefined;
+	}
 	const selected = await context.ui.select(
-		"Choose the second Duo model",
+		step === "first" ? "Duo (1/2): choose your first model" : "Duo (2/2): choose your partner",
 		choices.map(model => ({
 			label: modelSelector(model),
-			description: peerChoiceDescription(model, visible),
+			description: step === "second" ? peerChoiceDescription(model, visible) : modelLabel(model) + (visible && modelSelector(model) === modelSelector(visible) ? " · current OMP model" : ""),
 		})),
 	);
 	return choices.find(model => modelSelector(model) === selected);
@@ -54,7 +58,8 @@ export function registerDuoCommand(api: OmpExtensionApi): void {
 			if (lower === "help") {
 				context.ui.notify([
 					"Duo: two models, one workspace.",
-					"/duo  keep your current model and pick a partner",
+					"Terminal: omp \"/duo\" opens both model pickers",
+					"/duo  choose your first model, then your partner",
 					"/duo provider/model  choose a partner directly",
 					"/duo provider/model-a provider/model-b  select both models",
 					"/duo models  list configured model IDs",
@@ -116,7 +121,11 @@ export function registerDuoCommand(api: OmpExtensionApi): void {
 				return;
 			}
 			const previousVisible = context.models.current() ?? context.model;
-			const visible = selectors.length === 2 ? context.models.resolve(selectors[0]) : previousVisible;
+			const usePickers = !action || lower === "enable" || lower === "on";
+			const visible = usePickers
+				? await chooseModel("", context, previousVisible, "first")
+				: selectors.length === 2 ? context.models.resolve(selectors[0]) : previousVisible;
+			if (usePickers && !visible) return;
 			if (!visible && selectors.length === 2) {
 				context.ui.notify("Duo could not resolve model " + selectors[0] + ". Run /duo models to see available IDs.", "error");
 				return;
@@ -125,10 +134,10 @@ export function registerDuoCommand(api: OmpExtensionApi): void {
 				context.ui.notify("Choose the visible OMP model before opening Duo.", "error");
 				return;
 			}
-			const peer = await choosePeer(selectors.length === 2 ? selectors[1] : (lower === "enable" || lower === "on" ? "" : action), context, visible);
+			const peer = await chooseModel(usePickers ? "" : selectors.length === 2 ? selectors[1] : action, context, visible, "second");
 			if (!peer) return;
 
-			const changeVisible = selectors.length === 2 && (!previousVisible || modelSelector(visible) !== modelSelector(previousVisible));
+			const changeVisible = (usePickers || selectors.length === 2) && (!previousVisible || modelSelector(visible) !== modelSelector(previousVisible));
 			if (changeVisible) {
 				try {
 					if (!api.setModel || !(await api.setModel(visible))) {

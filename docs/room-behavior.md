@@ -1,14 +1,14 @@
 # OMP Local Duo
 
-Local Duo keeps the model already visible in OMP and lets you choose any authenticated model from OMP's current model catalog — including the visible model itself, which runs the room as two concurrent connections.
+Start from a terminal with `omp "/duo"`, or type `/duo` inside an existing OMP session.
+Duo first asks you to choose the visible model, then opens a second picker for the
+partner. Both use OMP's authenticated model catalog, and the same model can be
+selected twice for two concurrent sessions. Cancelling either picker leaves your
+current model unchanged and opens no room.
 
-Run the command with no arguments:
-
-~~~text
-/duo
-~~~
-
-The picker shows each available model and its configured context window. Select one and press Enter. The selected model joins as an equal member in a hidden OMP task harness, while the current model remains visible.
+To keep a model you have already selected, use `/duo provider/model` with just the
+partner's ID. To select both directly, use `/duo provider/model-a provider/model-b`
+inside OMP or `omp "/duo provider/model-a provider/model-b"` from your terminal.
 
 Both members use the same repository and working directory. They introduce their strengths, inspect the goal and todo list, propose a split through Agent Hub, and agree before either claims work. The visible harness records their agreement in OMP's canonical todo list because task agents do not receive the todo tool; it does not act as manager.
 

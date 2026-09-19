@@ -62,6 +62,8 @@ function createHarness(sessionModels = [visible, peer, other]) {
 		allowModelSwitch: true,
 		modelSwitches: [] as string[],
 		selectAnswer: undefined as string | undefined,
+		selectAnswers: [] as Array<string | undefined>,
+		selectTitles: [] as string[],
 	};
 
 	const api = {
@@ -100,9 +102,10 @@ function createHarness(sessionModels = [visible, peer, other]) {
 				sessionModels.find(model => model.provider + "/" + model.id === selector),
 		},
 		ui: {
-			select: async (_title: string, options: Array<{ label: string }>) => {
-				if (!state.selectAnswer) return undefined;
-				return options.some(option => option.label === state.selectAnswer) ? state.selectAnswer : undefined;
+			select: async (title: string, options: Array<{ label: string }>) => {
+				state.selectTitles.push(title);
+				const answer = state.selectAnswers.length ? state.selectAnswers.shift() : state.selectAnswer;
+				return options.some(option => option.label === answer) ? answer : undefined;
 			},
 			notify: (message: string, level?: string) => {
 				notifications.push({ message, level });
@@ -211,6 +214,45 @@ describe("local duo behavior", () => {
 	beforeEach(() => {
 		settings = fakeSettings();
 		setSettingsLoaderForTests(async () => settings);
+	});
+
+	test("bare duo picks both models in order before changing the current model", async () => {
+		const h = createHarness();
+		h.state.selectAnswers = ["example-a/model-c", "example-a/model-a"];
+		await h.runCommand("");
+		expect(h.state.selectTitles).toEqual(["Duo (1/2): choose your first model", "Duo (2/2): choose your partner"]);
+		expect(h.roomMessages("opened")[0].message.details).toMatchObject({ visible: "example-a/model-c", peer: "example-a/model-a" });
+		expect(h.state.currentModel).toEqual(other);
+	});
+
+	test("cancelling either picker leaves the model and room unchanged", async () => {
+		for (const answers of [[undefined], ["example-a/model-c", undefined]]) {
+			const h = createHarness();
+			h.state.selectAnswers = answers;
+			await h.runCommand("");
+			expect(h.state.currentModel).toEqual(visible);
+			expect(h.state.modelSwitches).toEqual([]);
+			expect(h.sent).toHaveLength(0);
+			expect(settings.store.get("task.agentModelOverrides")).toBeUndefined();
+		}
+	});
+
+	test("both pickers allow the same model and work without an existing selection", async () => {
+		const h = createHarness();
+		h.context.models.current = () => undefined as never;
+		h.state.selectAnswers = ["example-a/model-a", "example-a/model-a"];
+		await h.runCommand("");
+		expect(h.roomMessages("opened")[0].message.content).toContain("second concurrent connection");
+		expect(h.state.currentModel).toEqual(peer);
+	});
+
+	test("headless bare duo explains how to start interactively without prompting", async () => {
+		const h = createHarness();
+		Object.assign(h.context, { hasUI: false });
+		await h.runCommand("");
+		expect(h.state.selectTitles).toEqual([]);
+		expect(h.notifications[0].message).toContain('omp "/duo"');
+		expect(h.sent).toHaveLength(0);
 	});
 
 	test("selects both models and retains the first after closing", async () => {
