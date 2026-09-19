@@ -18,9 +18,9 @@ import { describeError } from "./util";
 
 async function choosePeer(spec: string, context: CommandContext, visible: ModelRef): Promise<ModelRef | undefined> {
 	const direct = spec.trim();
-	if (direct && direct !== "enable" && direct !== "on") {
+	if (direct) {
 		const resolved = context.models.resolve(direct);
-		if (!resolved) context.ui.notify("Duo could not resolve model " + direct + ".", "error");
+		if (!resolved) context.ui.notify("Duo could not resolve model " + direct + ". Run /duo models to see available IDs.", "error");
 		return resolved;
 	}
 
@@ -41,9 +41,9 @@ async function choosePeer(spec: string, context: CommandContext, visible: ModelR
 
 export function registerDuoCommand(api: OmpExtensionApi): void {
 	api.registerCommand("duo", {
-		description: "Open a two-model room and choose its second model from OMP",
+		description: "Start a two-model room; choose a partner or specify both models",
 		getArgumentCompletions: prefix => {
-			const actions = ["status", "disable", "enable"];
+			const actions = ["help", "models", "status", "stop", "disable", "enable"];
 			const query = prefix.trim().toLowerCase();
 			const matches = actions.filter(action => action.startsWith(query));
 			return matches.length > 0 ? matches.map(action => ({ value: action, label: action })) : null;
@@ -51,7 +51,28 @@ export function registerDuoCommand(api: OmpExtensionApi): void {
 		handler: async (args, context) => {
 			const action = args.trim();
 			const lower = action.toLowerCase();
-			if (lower === "disable" || lower === "off" || lower === "leave") {
+			if (lower === "help") {
+				context.ui.notify([
+					"Duo: two models, one workspace.",
+					"/duo  keep your current model and pick a partner",
+					"/duo provider/model  choose a partner directly",
+					"/duo provider/model-a provider/model-b  select both models",
+					"/duo models  list configured model IDs",
+					"/duo status  show your pair and peer presence",
+					"/duo stop  close the room after peer cancellation",
+					"Once the room opens, type your task as a normal message.",
+				].join("\n"), "info");
+				return;
+			}
+			if (lower === "models") {
+				const models = peerChoices(context.models.list());
+				context.ui.notify(models.length
+					? "Configured models (use these IDs with /duo):\n" + models.map(modelSelector).join("\n")
+					: "No models available. Configure and authenticate a model in OMP, then retry /duo.",
+					models.length ? "info" : "warning");
+				return;
+			}
+			if (lower === "stop" || lower === "disable" || lower === "off" || lower === "leave") {
 				await closeRoom(api, context);
 				return;
 			}
@@ -89,19 +110,49 @@ export function registerDuoCommand(api: OmpExtensionApi): void {
 				return;
 			}
 
-			const visible = context.models.current() ?? context.model;
+			const selectors = action.split(/\s+/).filter(Boolean);
+			if (selectors.length > 2) {
+				context.ui.notify("Use /duo, /duo provider/model, or /duo provider/model-a provider/model-b; then type your task separately.", "error");
+				return;
+			}
+			const previousVisible = context.models.current() ?? context.model;
+			const visible = selectors.length === 2 ? context.models.resolve(selectors[0]) : previousVisible;
+			if (!visible && selectors.length === 2) {
+				context.ui.notify("Duo could not resolve model " + selectors[0] + ". Run /duo models to see available IDs.", "error");
+				return;
+			}
 			if (!visible) {
 				context.ui.notify("Choose the visible OMP model before opening Duo.", "error");
 				return;
 			}
-			const peer = await choosePeer(action, context, visible);
+			const peer = await choosePeer(selectors.length === 2 ? selectors[1] : (lower === "enable" || lower === "on" ? "" : action), context, visible);
 			if (!peer) return;
+
+			const changeVisible = selectors.length === 2 && (!previousVisible || modelSelector(visible) !== modelSelector(previousVisible));
+			if (changeVisible) {
+				try {
+					if (!api.setModel || !(await api.setModel(visible))) {
+						context.ui.notify("Duo could not select the first model. Check its OMP authentication and retry.", "error");
+						return;
+					}
+				} catch (error) {
+					context.ui.notify("Duo could not select the first model: " + describeError(error), "error");
+					return;
+				}
+			}
 
 			const existing = roomStateOf(context);
 			let previousPeerOverride: string | undefined;
 			try {
 				previousPeerOverride = await installPeerModelOverride(modelSelector(peer), existing);
 			} catch (error) {
+				if (changeVisible && previousVisible) {
+					try {
+						if (!(await api.setModel?.(previousVisible))) throw new Error("model restoration refused");
+					} catch (restoreError) {
+						context.ui.notify("The room did not open and the previous model could not be restored: " + describeError(restoreError), "error");
+					}
+				}
 				context.ui.notify("Duo could not set the peer model override: " + describeError(error), "error");
 				return;
 			}

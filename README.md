@@ -6,7 +6,7 @@ An OMP plugin for models that talk through a task, agree on a split, and work to
 
 [![Checks](https://github.com/ashhart/Duo/actions/workflows/check.yml/badge.svg)](https://github.com/ashhart/Duo/actions/workflows/check.yml)
 ![OMP](https://img.shields.io/badge/OMP-tested%20on%2018.2.6-536dfe)
-![Version](https://img.shields.io/badge/version-0.5.2-00897b)
+![Version](https://img.shields.io/badge/version-0.5.3-00897b)
 
 </div>
 
@@ -17,22 +17,55 @@ Each model runs its own conversation; Duo does not share KV caches or model weig
 
 ## Get started
 
-Already using [OMP](https://github.com/can1357/oh-my-pi) with a working model?
-Setup is one terminal command, an OMP restart, and a model selection.
+With OMP installed and your models authenticated, install Duo in your terminal:
 
 ```sh
 omp plugin install github:ashhart/Duo
 ```
 
-Restart OMP in your project, type **`/duo`**, and select a partner from the picker.
-Then give them a task, for example:
+Open a terminal in the project you want the models to work on, then launch OMP:
+
+```sh
+omp
+```
+
+Inside OMP, type:
+
+```text
+/duo
+```
+
+Choose a partner and press Enter. Your current OMP model is the first member;
+the model you pick is the second. Once the room opens, type a task normally:
 
 > Add search to this app, agree on who owns the implementation and tests, and check each other's work.
 
-The picker uses the models already configured in OMP, so Duo needs no extra API keys
-or configuration file.
-You can choose two different models or two concurrent sessions of the same model.
-Provider authentication and model downloads, if needed, are part of your OMP setup.
+**Want to choose both models in one command?** First see your configured model IDs:
+
+```text
+/duo models
+```
+
+Then use two IDs from that list:
+
+```text
+/duo provider/model-a provider/model-b
+```
+
+Replace `provider/model-a` and `provider/model-b` with your actual model IDs.
+The first becomes your visible OMP model; the second joins as its partner.
+Use the same ID twice to run two sessions of one model.
+If you want to keep your current model, supply only the partner's ID:
+
+```text
+/duo provider/model-b
+```
+
+Duo uses your existing OMP providers, so it needs no separate API keys or config file.
+If OMP is already running when you install or update Duo, restart it first.
+For a fresh OMP installation, follow [OMP's setup instructions](https://github.com/can1357/oh-my-pi)
+and configure at least one working model before starting Duo.
+Provider setup and any model downloads take additional time.
 
 ## A conversation you can follow
 
@@ -63,12 +96,18 @@ a background task and communicates through Agent Hub.
 
 | Command | What it does |
 | --- | --- |
-| `/duo` | Open the model picker and start a room. |
-| `/duo provider/model` | Start with a configured model directly. |
+| `/duo` | Keep your current model, open the picker, and choose a partner. |
+| `/duo provider/model` | Keep your current model and start with this partner. |
+| `/duo provider/model-a provider/model-b` | Select both models: first is visible, second is the partner. |
+| `/duo models` | List configured model IDs to use in the commands above. |
+| `/duo help` | Show the commands and next steps inside OMP. |
 | `/duo status` | Show the pair and the peer's presence. |
-| `/duo disable` | Request peer cancellation and close the room once confirmed. |
+| `/duo stop` | Request peer cancellation and close the room once confirmed. |
+| `/duo disable` | Alias for `/duo stop`. |
 
 Shared working notes live in `.omp/duo/notes.md` in your project.
+To change partners, run `/duo stop`, wait for closure, then start another room.
+Selecting two models changes your visible OMP model; it stays selected after the room closes.
 Room configuration is saved with the OMP session and restored when you resume it.
 Open questions appear on the board while the room is running.
 

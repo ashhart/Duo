@@ -58,10 +58,19 @@ function createHarness(sessionModels = [visible, peer, other]) {
 	};
 	const state = {
 		thinkingLevel: "medium" as string | undefined,
+		currentModel: visible,
+		allowModelSwitch: true,
+		modelSwitches: [] as string[],
 		selectAnswer: undefined as string | undefined,
 	};
 
 	const api = {
+		setModel: async (model: typeof visible) => {
+			state.modelSwitches.push(model.provider + "/" + model.id);
+			if (!state.allowModelSwitch) return false;
+			state.currentModel = model;
+			return true;
+		},
 		on: (event: string, handler: (event: never, context: never) => unknown) => {
 			const list = handlers.get(event) ?? [];
 			list.push(handler);
@@ -86,7 +95,7 @@ function createHarness(sessionModels = [visible, peer, other]) {
 		sessionManager,
 		models: {
 			list: () => sessionModels,
-			current: () => visible,
+			current: () => state.currentModel,
 			resolve: (selector: string) =>
 				sessionModels.find(model => model.provider + "/" + model.id === selector),
 		},
@@ -202,6 +211,68 @@ describe("local duo behavior", () => {
 	beforeEach(() => {
 		settings = fakeSettings();
 		setSettingsLoaderForTests(async () => settings);
+	});
+
+	test("selects both models and retains the first after closing", async () => {
+		const h = createHarness();
+		await h.runCommand("example-a/model-c example-a/model-a");
+		expect(h.state.currentModel).toEqual(other);
+		expect(h.roomMessages("opened")[0].message.details).toMatchObject({ visible: "example-a/model-c", peer: "example-a/model-a" });
+		await h.runCommand("stop");
+		expect(h.roomMessages("closed")).toHaveLength(1);
+		expect(h.state.currentModel).toEqual(other);
+	});
+
+	test("validates both model IDs before switching or opening", async () => {
+		const h = createHarness();
+		await h.runCommand("example-a/model-c missing/model");
+		await h.runCommand("missing/model example-a/model-a");
+		await h.runCommand("example-a/model-c example-a/model-a extra");
+		expect(h.state.modelSwitches).toEqual([]);
+		expect(h.roomMessages("opened")).toHaveLength(0);
+		expect(h.notifications.every(n => n.level === "error")).toBe(true);
+	});
+
+	test("does not open or override the peer when model selection is refused", async () => {
+		const h = createHarness();
+		h.state.allowModelSwitch = false;
+		await h.runCommand("example-a/model-c example-a/model-a");
+		expect(h.state.currentModel).toEqual(visible);
+		expect(h.roomMessages("opened")).toHaveLength(0);
+		expect(settings.store.get("task.agentModelOverrides")).toBeUndefined();
+	});
+
+	test("restores the visible model when peer configuration fails", async () => {
+		const h = createHarness();
+		setSettingsLoaderForTests(async () => { throw new Error("settings unavailable"); });
+		await h.runCommand("example-a/model-c example-a/model-a");
+		expect(h.state.currentModel).toEqual(visible);
+		expect(h.roomMessages("opened")).toHaveLength(0);
+	});
+
+	test("help and model discovery work without opening or changing a room", async () => {
+		const h = createHarness();
+		await h.runCommand("help");
+		await h.runCommand("models");
+		expect(h.notifications[0].message).toContain("/duo provider/model-a provider/model-b");
+		expect(h.notifications[1].message).toContain("example-a/model-c");
+		expect(h.sent).toHaveLength(0);
+		expect(h.state.modelSwitches).toEqual([]);
+		const empty = createHarness([]);
+		await empty.runCommand("models");
+		expect(empty.notifications[0].level).toBe("warning");
+	});
+
+	test("cannot switch a live room's visible model through the pair command", async () => {
+		const h = createHarness();
+		await h.openRoom();
+		h.admitPeer();
+		await h.runCommand("example-a/model-c example-a/model-a");
+		expect(h.state.modelSwitches).toEqual([]);
+		expect(h.roomMessages("opened")).toHaveLength(1);
+		await h.runCommand("stop");
+		expect(h.controlMessages("stop-peer")).toHaveLength(1);
+		expect(h.roomMessages("closed")).toHaveLength(0);
 	});
 
 	test("opens a second concurrent connection to the current model", async () => {

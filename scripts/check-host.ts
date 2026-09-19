@@ -44,9 +44,9 @@ try {
   }
   const result = await run([
     "omp", "--no-session", "--no-title", "--no-skills", "--no-rules", "--no-lsp",
-    "-e", join(root, "scripts/host-provider.ts"), "--model", "duo-check/visible",
+    "-e", join(root, "scripts/host-provider.ts"), "--model", "duo-check/peer",
     "--smol", "duo-check/visible", "--tools", "task,hub", "--mode", "json", "--max-time", "30s",
-    "-p", "/duo duo-check/peer", "Run the Duo integration check.",
+    "-p", "/duo duo-check/visible duo-check/peer", "Run the Duo integration check.",
   ]);
   const events = result.split("\n").filter(line => line.startsWith("{")).map(line => JSON.parse(line));
   const messages = events.filter(event => event.type === "message_end").map(event => event.message);

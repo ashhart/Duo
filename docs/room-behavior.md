@@ -27,7 +27,13 @@ Members ask each other structured questions with `ASK <id> <question>` and `ANSW
 
 Rooms survive restarts: the room is persisted in the session file and rebuilt on resume, with the peer model override re-installed automatically. Wake the parked hidden member with a hub message, or admit it once more if it is gone.
 
-Use /duo status to inspect the room (including whether the peer is present) and /duo disable to close it. You can also bypass the picker with /duo provider/model.
+Use `/duo models` to list configured model IDs and `/duo help` for command help.
+Use `/duo status` to inspect the room and `/duo stop` or `/duo disable` to close it.
+Bypass the picker with `/duo provider/model` to keep your current model, or
+`/duo provider/model-a provider/model-b` to select both. The first becomes your
+visible model and stays selected after the room closes; the second joins as the peer.
+Both selectors are resolved before switching models. A live room must close before
+another pair can be selected.
 
 To close the room, /duo disable requests native Hub agent cancellation with `op: "cancel"` and `ids: ["DuoPeer"]`. While cancellation is pending, the plugin blocks new tool work and room replacement, and reports the room closed only after Hub confirms cancellation or that the peer is absent. Failed or ambiguous cancellation stays visible and can be retried with /duo disable. In print/RPC mode, a subsequent model turn must consume the queued cancellation request. After confirmation, the original model override and thinking level are restored. Shutting down OMP clears runtime state without reopening the room, while retaining its saved configuration for resume. Subagent spawns that do not target duo-peer pass through untouched while the room is active.
 

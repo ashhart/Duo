@@ -59,6 +59,8 @@ export interface ToolResultEvent {
 }
 
 export interface OmpExtensionApi {
+	/** Native OMP model selection; false when authentication is unavailable. */
+	setModel?(model: ModelRef): Promise<boolean>;
 	on(
 		event: "before_agent_start",
 		handler: (event: PromptEvent, context: CommandContext) => { systemPrompt: string[] } | undefined | Promise<{ systemPrompt: string[] } | undefined>,
