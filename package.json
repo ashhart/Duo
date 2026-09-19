@@ -1,0 +1,45 @@
+{
+  "name": "omp-local-duo",
+  "version": "0.5.2",
+  "description": "Two models, one workspace: talk, agree on a plan, and build together in OMP.",
+  "type": "module",
+  "private": true,
+  "keywords": [
+    "omp-plugin",
+    "omp",
+    "multi-agent",
+    "local-llm"
+  ],
+  "files": [
+    "src",
+    "agents",
+    "README.md",
+    "docs"
+  ],
+  "omp": {
+    "name": "Duo",
+    "description": "Two models working together through Agent Hub messages in a shared workspace.",
+    "extensions": [
+      "./src/omp.ts"
+    ],
+    "version": "0.5.2"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "bun test && bun run typecheck",
+    "check:host": "bun scripts/check-host.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashhart/Duo.git"
+  },
+  "homepage": "https://github.com/ashhart/Duo#readme",
+  "bugs": {
+    "url": "https://github.com/ashhart/Duo/issues"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
+  "packageManager": "bun@1.3.14"
+}
