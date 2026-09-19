@@ -1,8 +1,6 @@
 <div align="center">
 
-# Duo
-
-### Two models. One workspace.
+<img src="assets/duo-banner.png" alt="Duo: Two models. One workspace. Two AI partners exchange messages." width="1200">
 
 An OMP plugin for models that talk through a task, agree on a split, and work together.
 

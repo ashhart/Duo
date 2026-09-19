@@ -14,7 +14,8 @@
     "src",
     "agents",
     "README.md",
-    "docs"
+    "docs",
+    "assets"
   ],
   "omp": {
     "name": "Duo",
